@@ -1,15 +1,23 @@
 # Hostinger VPS (Docker + Traefik template), reusing the Ollama that already runs there.
-# Deployed through the Hostinger Docker Manager. Needs in the project environment:
+# The Hostinger Docker Manager does not build images, so this runs a stock Python image and
+# deploy/start.sh installs the app from GitHub at start-up (restart the project to update).
+# Needs in the project environment:
 #   TRAEFIK_HOST, APP_PASSWORD, OLLAMA_NETWORK (the existing Ollama project's network), plus
 #   any publishing credentials from .env.example.
 services:
   app:
-    build:
-      context: https://github.com/idgrou/ContentForge-AI.git#claude/great-brown-ftpn5m
+    image: python:3.12-slim
+    entrypoint: ["python", "-c", "import os,urllib.request;urllib.request.urlretrieve(os.environ['START_URL'],'/start.sh');os.execvp('sh',['sh','/start.sh'])"]
     restart: unless-stopped
     ports:
       - "8000"
     environment:
+      START_URL: ${START_URL:-https://raw.githubusercontent.com/idgrou/ContentForge-AI/claude/great-brown-ftpn5m/deploy/start.sh}
+      CONTENTFORGE_REF: ${CONTENTFORGE_REF:-claude/great-brown-ftpn5m}
+      CONTENTFORGE_DATA: /data
+      HF_HOME: /data/cache/huggingface
+      SUBTITLE_FONT: DejaVu Sans
+      PYTHONUNBUFFERED: "1"
       APP_USER: ${APP_USER:-admin}
       APP_PASSWORD: ${APP_PASSWORD}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
@@ -33,6 +41,11 @@ services:
     networks:
       - default
       - ollama
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 600s
     labels:
       - traefik.enable=true
       - traefik.http.routers.${COMPOSE_PROJECT_NAME}.rule=Host(`${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}`)
