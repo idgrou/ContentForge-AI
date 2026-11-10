@@ -26,7 +26,11 @@ def _env(name: str, default: str = "") -> str:
 
 @dataclass
 class Settings:
-    model: str = field(default_factory=lambda: _env("CONTENTFORGE_MODEL", "claude-opus-5-5"))
+    llm_model: str = field(default_factory=lambda: _env("OLLAMA_MODEL", "gemma3:12b"))
+    llm_host: str = field(default_factory=lambda: _env("OLLAMA_HOST", "http://localhost:11434"))
+    llm_num_ctx: int = field(default_factory=lambda: int(_env("OLLAMA_NUM_CTX", "16384")))
+    whisper_model: str = field(default_factory=lambda: _env("WHISPER_MODEL", "small"))
+    whisper_device: str = field(default_factory=lambda: _env("WHISPER_DEVICE", "auto"))
     language: str = field(default_factory=lambda: _env("CONTENTFORGE_LANGUAGE", "he"))
     output_dir: Path = field(default_factory=lambda: Path(_env("CONTENTFORGE_OUTPUT", "output")))
 

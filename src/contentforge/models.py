@@ -1,6 +1,6 @@
 """Data models shared by every stage of the pipeline.
 
-Models that Claude fills in (structured outputs) forbid extra fields so their JSON
+Models that the local LLM fills in (structured outputs) forbid extra fields so their JSON
 schema carries ``additionalProperties: false``.
 """
 
@@ -30,14 +30,34 @@ class Transcript(BaseModel):
     segments: list[TranscriptSegment]
 
     def to_prompt_text(self) -> str:
-        """Timestamped lines, compact enough to send a long video to Claude."""
+        """Timestamped lines, compact enough to send to the LLM."""
         return "\n".join(f"[{s.start:.1f}-{s.end:.1f}] {s.text.strip()}" for s in self.segments)
+
+    @property
+    def duration(self) -> float:
+        return self.segments[-1].end if self.segments else 0.0
+
+    def chunks(self, size: float = 1200, overlap: float = 60) -> list["Transcript"]:
+        """Split into windows of ``size`` seconds that overlap by ``overlap`` seconds.
+
+        Local models have smaller context windows, so long videos are processed piece by piece.
+        """
+        if self.duration <= size:
+            return [self]
+        out, start = [], 0.0
+        while start < self.duration:
+            end = start + size
+            segs = [s for s in self.segments if s.start >= start and s.start < end + overlap]
+            if segs:
+                out.append(Transcript(language=self.language, segments=segs))
+            start += size - overlap
+        return out
 
     def text_between(self, start: float, end: float) -> str:
         return " ".join(s.text.strip() for s in self.segments if s.end > start and s.start < end)
 
 
-# --- topic clips (Claude output) -----------------------------------------------
+# --- topic clips (LLM output) -----------------------------------------------
 
 class ClipSegment(_Strict):
     start: float = Field(description="Start time in seconds, taken from the transcript timestamps")
@@ -55,7 +75,7 @@ class ClipPlan(_Strict):
     clips: list[TopicClip]
 
 
-# --- SEO and posts (Claude output) ---------------------------------------------
+# --- SEO and posts (LLM output) ---------------------------------------------
 
 class SEOPackage(_Strict):
     title: str = Field(description="Main SEO title, about 50-60 characters")

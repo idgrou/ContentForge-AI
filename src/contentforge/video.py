@@ -109,6 +109,17 @@ def make_vertical(src: Path, out: Path, subtitles: Path | None = None, mode: str
     return out
 
 
+def burn_subtitles_cmd(src: Path, subtitles: Path, out: Path) -> list[str]:
+    graph = f"subtitles='{_escape_filter_path(subtitles)}':force_style='{SUBTITLE_STYLE}'"
+    return ["ffmpeg", "-y", "-i", str(src), "-vf", graph, "-map", "0:v", "-map", "0:a?",
+            *VIDEO_CODEC, *AUDIO_CODEC, "-movflags", "+faststart", str(out)]
+
+
+def burn_subtitles(src: Path, subtitles: Path, out: Path) -> Path:
+    _run(burn_subtitles_cmd(src, subtitles, out))
+    return out
+
+
 def thumbnail(src: Path, out: Path, at: float = 1.0) -> Path:
     _run(["ffmpeg", "-y", "-ss", f"{at:.2f}", "-i", str(src), "-frames:v", "1", "-q:v", "2", str(out)])
     return out

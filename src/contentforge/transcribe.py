@@ -44,18 +44,45 @@ def load_subtitles(path: Path) -> Transcript:
     return parse_subtitles(path.read_text(encoding="utf-8", errors="replace"))
 
 
-def whisper_transcribe(video: Path, model_size: str = "medium", language: str | None = None) -> Transcript:
-    """Local speech-to-text with faster-whisper (pip install 'contentforge-ai[transcribe]')."""
+def _resolve_device(device: str) -> str:
+    if device != "auto":
+        return device
+    try:
+        import torch  # type: ignore
+        if torch.cuda.is_available():
+            torch.zeros(1, device="cuda")  # catches missing cuBLAS/cuDNN
+            return "cuda"
+    except (ImportError, OSError, RuntimeError):
+        pass
+    return "cpu"
+
+
+def whisper_transcribe(video: Path, model_size: str = "small", language: str | None = None,
+                       device: str = "auto", cache_dir: Path | None = None) -> Transcript:
+    """Local speech-to-text with faster-whisper (pip install 'contentforge-ai[transcribe]').
+
+    The result is cached as an .srt next to ``cache_dir`` and reused while it is newer than the video.
+    """
+    cache = (cache_dir or video.parent) / f"{video.stem}.whisper.srt"
+    if cache.exists() and cache.stat().st_mtime >= video.stat().st_mtime:
+        cached = load_subtitles(cache)
+        if cached.segments:
+            return cached
     try:
         from faster_whisper import WhisperModel
     except ImportError as exc:
         raise RuntimeError("faster-whisper is not installed: pip install 'contentforge-ai[transcribe]'") from exc
-    model = WhisperModel(model_size, compute_type="auto")
-    segments, info = model.transcribe(str(video), language=language, vad_filter=True)
-    return Transcript(
+    dev = _resolve_device(device)
+    model = WhisperModel(model_size, device=dev, compute_type="float16" if dev == "cuda" else "int8")
+    segments, info = model.transcribe(str(video), language=language, beam_size=5,
+                                      condition_on_previous_text=False, vad_filter=False)
+    transcript = Transcript(
         language=info.language,
-        segments=[TranscriptSegment(start=s.start, end=s.end, text=s.text.strip()) for s in segments],
+        segments=[TranscriptSegment(start=s.start, end=s.end, text=s.text.strip()) for s in segments if s.text.strip()],
     )
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(to_srt(transcript.segments), encoding="utf-8")
+    return transcript
 
 
 def _srt_time(t: float) -> str:
