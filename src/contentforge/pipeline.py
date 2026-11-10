@@ -21,7 +21,7 @@ DEFAULT_PLATFORMS = ["youtube_shorts", "tiktok", "instagram", "facebook", "teleg
 
 
 def make_llm(s: Settings) -> LocalLLM:
-    return LocalLLM(model=s.llm_model, host=s.llm_host, num_ctx=s.llm_num_ctx)
+    return LocalLLM(model=s.llm_model, host=s.llm_host, num_ctx=s.llm_num_ctx, think=s.llm_think)
 
 
 def get_source(source: str, out_dir: Path) -> tuple[Path, str, Path | None]:

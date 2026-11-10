@@ -1,0 +1,26 @@
+# ContentForge AI with its own Ollama. For a server that already runs Ollama, see
+# deploy/hostinger-vps.compose.yml.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    env_file:
+      - .env
+    volumes:
+      - data:/data
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama:/root/.ollama
+
+volumes:
+  data:
+  ollama:

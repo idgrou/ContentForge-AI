@@ -60,6 +60,25 @@ contentforge publish output/manifest.json --to markdown,wordpress,telegram
 
 All results land in `output/`. `manifest.json` holds every clip with its SEO package and posts, and you can edit it before publishing.
 
+## Web interface and server installation
+
+```bash
+pip install -e '.[web]'
+APP_PASSWORD=choose-a-password uvicorn contentforge.web:app --port 8000
+```
+
+With Docker (includes its own Ollama):
+
+```bash
+cp .env.example .env   # set APP_PASSWORD
+docker compose up -d --build
+docker compose exec ollama ollama pull qwen3:8b
+```
+
+**Hostinger VPS** (the "Docker + Traefik" template): `deploy/hostinger-vps.compose.yml` builds the app straight from GitHub, attaches it to the server's existing Ollama, and Traefik issues an SSL certificate automatically. Environment variables are set in hPanel → VPS → Docker Manager.
+
+YouTube often blocks downloads from server IPs. If a download fails, upload the file through the interface, or set `YTDLP_COOKIES` to a cookies file exported from your browser.
+
 ## Safe publishing
 
 - WordPress posts are created as **drafts**, YouTube uploads as **private**, and Facebook video posts as **unpublished**. You approve them yourself.

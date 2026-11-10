@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -34,6 +35,9 @@ def download(url: str, out_dir: Path, sub_langs: tuple[str, ...] = ("he", "iw", 
         "quiet": True,
         "noprogress": True,
     }
+    cookies = os.environ.get("YTDLP_COOKIES", "").strip()
+    if cookies and os.path.isfile(cookies):  # exported browser cookies, for sites that block servers
+        opts["cookiefile"] = cookies
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
         video_path = Path(ydl.prepare_filename(info)).with_suffix(".mp4")

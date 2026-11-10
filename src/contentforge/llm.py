@@ -45,12 +45,14 @@ class LocalLLM:
         temperature: float = 0.4,
         timeout: float = 900,
         session: requests.Session | None = None,
+        think: bool | None = False,
     ):
         self.model = model
         self.host = host.rstrip("/")
         self.num_ctx = num_ctx
         self.temperature = temperature
         self.timeout = timeout
+        self.think = think  # False turns off the reasoning phase of models like qwen3 (faster)
         self.session = session or requests.Session()
 
     def _chat(self, messages: list[dict], fmt: Any = None) -> str:
@@ -62,15 +64,33 @@ class LocalLLM:
         }
         if fmt is not None:
             body["format"] = fmt
+        if self.think is not None:
+            body["think"] = self.think
         try:
             resp = self.session.post(f"{self.host}/api/chat", json=body, timeout=self.timeout)
         except requests.ConnectionError as exc:
             raise LLMError(f"Ollama is not reachable at {self.host}. Start it with `ollama serve`.") from exc
+        if resp.status_code == 400 and "think" in resp.text.lower() and "think" in body:
+            self.think = None  # this model has no thinking switch; stop sending it
+            return self._chat(messages, fmt)
         if resp.status_code == 404:
             raise LLMError(f"Model {self.model!r} not found. Run `ollama pull {self.model}`.")
         if resp.status_code != 200:
             raise LLMError(f"Ollama error {resp.status_code}: {resp.text[:500]}")
         return resp.json()["message"]["content"]
+
+    def has_model(self) -> bool:
+        try:
+            tags = self.session.get(f"{self.host}/api/tags", timeout=10).json().get("models", [])
+        except (requests.RequestException, ValueError):
+            return False
+        return any(t.get("name") in (self.model, f"{self.model}:latest") for t in tags)
+
+    def pull(self) -> None:
+        """Download the model into Ollama if it is not there yet (free, from the Ollama library)."""
+        resp = self.session.post(f"{self.host}/api/pull", json={"model": self.model, "stream": False}, timeout=7200)
+        if resp.status_code != 200:
+            raise LLMError(f"Could not pull {self.model}: {resp.text[:300]}")
 
     def complete(self, prompt: str, json_mode: bool = True) -> str:
         """Plain prompt -> text. Used by the highlight finder (``llm_fn`` signature)."""

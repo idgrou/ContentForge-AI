@@ -29,6 +29,7 @@ class Settings:
     llm_model: str = field(default_factory=lambda: _env("OLLAMA_MODEL", "gemma3:12b"))
     llm_host: str = field(default_factory=lambda: _env("OLLAMA_HOST", "http://localhost:11434"))
     llm_num_ctx: int = field(default_factory=lambda: int(_env("OLLAMA_NUM_CTX", "16384")))
+    llm_think: bool = field(default_factory=lambda: _env("OLLAMA_THINK", "false").lower() == "true")
     whisper_model: str = field(default_factory=lambda: _env("WHISPER_MODEL", "small"))
     whisper_device: str = field(default_factory=lambda: _env("WHISPER_DEVICE", "auto"))
     language: str = field(default_factory=lambda: _env("CONTENTFORGE_LANGUAGE", "he"))

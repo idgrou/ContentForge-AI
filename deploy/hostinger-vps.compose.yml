@@ -1,0 +1,49 @@
+# Hostinger VPS (Docker + Traefik template), reusing the Ollama that already runs there.
+# Deployed through the Hostinger Docker Manager. Needs in the project environment:
+#   TRAEFIK_HOST, APP_PASSWORD, OLLAMA_NETWORK (the existing Ollama project's network), plus
+#   any publishing credentials from .env.example.
+services:
+  app:
+    build:
+      context: https://github.com/idgrou/ContentForge-AI.git#claude/great-brown-ftpn5m
+    restart: unless-stopped
+    ports:
+      - "8000"
+    environment:
+      APP_USER: ${APP_USER:-admin}
+      APP_PASSWORD: ${APP_PASSWORD}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:8b}
+      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-16384}
+      OLLAMA_THINK: ${OLLAMA_THINK:-false}
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      CONTENTFORGE_LANGUAGE: ${CONTENTFORGE_LANGUAGE:-he}
+      WORDPRESS_URL: ${WORDPRESS_URL:-}
+      WORDPRESS_USER: ${WORDPRESS_USER:-}
+      WORDPRESS_APP_PASSWORD: ${WORDPRESS_APP_PASSWORD:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      META_PAGE_ID: ${META_PAGE_ID:-}
+      META_PAGE_TOKEN: ${META_PAGE_TOKEN:-}
+      INSTAGRAM_USER_ID: ${INSTAGRAM_USER_ID:-}
+      WEBHOOK_URL: ${WEBHOOK_URL:-}
+      YTDLP_COOKIES: ${YTDLP_COOKIES:-}
+    volumes:
+      - data:/data
+    networks:
+      - default
+      - ollama
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.rule=Host(`${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.entrypoints=websecure
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.tls.certresolver=letsencrypt
+      - traefik.http.services.${COMPOSE_PROJECT_NAME}.loadbalancer.server.port=8000
+
+volumes:
+  data:
+
+networks:
+  ollama:
+    external: true
+    name: ${OLLAMA_NETWORK:-ollama-fvyp_default}

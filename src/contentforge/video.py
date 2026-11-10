@@ -7,6 +7,7 @@ Each ``*_cmd`` function only builds the argument list, so it can be tested witho
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -75,7 +76,7 @@ def cut_and_join(src: Path, parts: list[tuple[float, float]], out: Path) -> Path
 
 # --- vertical version with subtitles -------------------------------------------
 
-SUBTITLE_STYLE = "FontName=Arial,FontSize=13,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=2,Shadow=0,Alignment=2,MarginV=70"
+SUBTITLE_STYLE = f"FontName={os.environ.get('SUBTITLE_FONT', 'Arial')},FontSize=13,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=2,Shadow=0,Alignment=2,MarginV=70"
 
 
 def vertical_cmd(src: Path, out: Path, subtitles: Path | None = None, mode: str = "blur",
